@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
 os.chdir(os.path.realpath(os.path.dirname(__file__)))
 
 import dash
-from dash.dependencies import Output, Event, Input
+from dash.dependencies import Output, Input # Event
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly
@@ -202,8 +202,9 @@ def pos_neg_neutral(col):
     
             
 @app.callback(Output('recent-tweets-table', 'children'),
-              [Input(component_id='sentiment_term', component_property='value')],
-              events=[Event('recent-table-update', 'interval')])        
+              [Input(component_id='sentiment_term', component_property='value')]
+#              ,events=[Event('recent-table-update', 'interval')]
+              )        
 def update_recent_tweets(sentiment_term):
     if sentiment_term:
         df = pd.read_sql("SELECT sentiment.* FROM sentiment_fts fts LEFT JOIN sentiment ON fts.rowid = sentiment.id WHERE fts.sentiment_fts MATCH ? ORDER BY fts.rowid DESC LIMIT 10", conn, params=(sentiment_term+'*',))
@@ -219,8 +220,9 @@ def update_recent_tweets(sentiment_term):
 
 
 @app.callback(Output('sentiment-pie', 'figure'),
-              [Input(component_id='sentiment_term', component_property='value')],
-              events=[Event('sentiment-pie-update', 'interval')])
+              [Input(component_id='sentiment_term', component_property='value')]
+#              , events=[Event('sentiment-pie-update', 'interval')]
+              )
 def update_pie_chart(sentiment_term):
 
     # get data from cache
@@ -263,8 +265,9 @@ def update_pie_chart(sentiment_term):
 
 
 @app.callback(Output('live-graph', 'figure'),
-              [Input(component_id='sentiment_term', component_property='value')],
-              events=[Event('graph-update', 'interval')])
+              [Input(component_id='sentiment_term', component_property='value')]
+#              , events=[Event('graph-update', 'interval')]
+              )
 def update_graph_scatter(sentiment_term):
     try:
         if sentiment_term:
@@ -313,8 +316,9 @@ def update_graph_scatter(sentiment_term):
 
 @app.callback(Output('historical-graph', 'figure'),
               [Input(component_id='sentiment_term', component_property='value'),
-               ],
-              events=[Event('historical-update', 'interval')])
+               ]
+#              , events=[Event('historical-update', 'interval')]
+              )
 def update_hist_graph_scatter(sentiment_term):
     try:
         if sentiment_term:
@@ -392,8 +396,9 @@ def generate_size(value, smin, smax):
 #https://community.plot.ly/t/multiple-outputs-from-single-input-with-one-callback/4970
 
 @app.callback(Output('related-sentiment', 'children'),
-              [Input(component_id='sentiment_term', component_property='value')],
-              events=[Event('related-update', 'interval')])
+              [Input(component_id='sentiment_term', component_property='value')]
+#              , events=[Event('related-update', 'interval')]
+              )
 def update_related_terms(sentiment_term):
     try:
 
@@ -436,8 +441,9 @@ def update_related_terms(sentiment_term):
 # term: [sent, size]
 
 @app.callback(Output('recent-trending', 'children'),
-              [Input(component_id='sentiment_term', component_property='value')],
-              events=[Event('related-update', 'interval')])
+              [Input(component_id='sentiment_term', component_property='value')]
+#              ,events=[Event('related-update', 'interval')]
+              )
 def update_recent_trending(sentiment_term):
     try:
         query = """

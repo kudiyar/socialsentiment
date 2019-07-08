@@ -1,5 +1,8 @@
 import time
 import os
+from threading import Lock
+
+lock = Lock()
 
 # sqlite-based cache
 class cache_sqlite:
@@ -12,13 +15,16 @@ class cache_sqlite:
 
         # in-memory sqlite based cache
         self.connection = sqlite3.connect(':memory:', check_same_thread=False, isolation_level=None)
-        self.cursor = self.connection.cursor()
-        self.cursor.execute("PRAGMA journal_mode=wal")
-        self.cursor.execute("PRAGMA wal_checkpoint=TRUNCATE")
-
-        # start cache cleaning
-        self.clean_cache()
-
+        try:
+            lock.acquire(True)
+            self.cursor = self.connection.cursor()
+            self.cursor.execute("PRAGMA journal_mode=wal")
+            self.cursor.execute("PRAGMA wal_checkpoint=TRUNCATE")
+    
+            # start cache cleaning
+            self.clean_cache()
+        finally:
+            lock.release()
 
     # cleans older than 60 seconds cache elements (those will be regenerated either way by update_hist_graph_scatter)
     def clean_cache(self):
@@ -28,7 +34,13 @@ class cache_sqlite:
 
         # clean old entries
         for table in self.tables:
-            self.cursor.execute("DELETE FROM {} WHERE expires < ?".format(table), (int(time.time()),))
+            try:
+                lock.acquire(True)
+                self.cursor.execute("DELETE FROM {} WHERE expires < ?".format(table), (int(time.time()),))
+            finally:
+                lock.release()
+        
+
 
     # get cache element
     def get(self, pool, key):
@@ -38,27 +50,39 @@ class cache_sqlite:
             return None
 
         # get data from cache
-        result = self.cursor.execute("SELECT value FROM {} WHERE key = ?".format(pool), (key,)).fetchone()
-
+        try:
+            lock.acquire(True)
+            result = self.cursor.execute("SELECT value FROM {} WHERE key = ?".format(pool), (key,)).fetchone()
+        finally:
+            lock.release()
         # no result
         if not result:
             return None
-
+#        lock.release()
         # load pickle
         return pickle.loads(result[0])
 
     # set element in cache
     def set(self, pool, key, value, ttl=0):
-
+#        lock.acquire(True)
         # if new pool, create table
         if pool not in self.tables:
-            self.cursor.execute("CREATE TABLE IF NOT EXISTS {}(key TEXT PRIMARY KEY, value TEXT, expires INTEGER)".format(pool))
-            self.cursor.execute("CREATE INDEX expires_{0} ON {0} (expires ASC)".format(pool))
-            self.tables.append(pool)
+            try:
+                lock.acquire(True)
+                self.cursor.execute("CREATE TABLE IF NOT EXISTS {}(key TEXT PRIMARY KEY, value TEXT, expires INTEGER)".format(pool))
+                self.cursor.execute("CREATE INDEX expires_{0} ON {0} (expires ASC)".format(pool))
+                self.tables.append(pool)
+            finally:
+                lock.release()
 
         # store value with key
-        self.cursor.execute("REPLACE INTO {} VALUES (?, ?, ?)".format(pool), (key, pickle.dumps(value), int(time.time() + ttl) if ttl > 0 and ttl <= 2592000 else ttl))
-
+        try:
+            lock.acquire(True)
+            self.cursor.execute("REPLACE INTO {} VALUES (?, ?, ?)".format(pool), (key, pickle.dumps(value), int(time.time() + ttl) if ttl > 0 and ttl <= 2592000 else ttl))
+#        lock.release()
+        finally:
+            lock.release()
+        
 # memcached-based cache
 class cache_memcached:
 
